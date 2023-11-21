@@ -1,13 +1,8 @@
 package com.arkivanov.decompose.extensions.compose.jetbrains.stack.animation.predictiveback
 
-import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.ExperimentalDecomposeApi
 import com.arkivanov.essenty.backhandler.BackEvent
@@ -61,12 +56,8 @@ interface PredictiveBackAnimatable {
 @ExperimentalDecomposeApi
 fun predictiveBackAnimatable(
     initialBackEvent: BackEvent,
-    exitModifier: (progress: Float, edge: BackEvent.SwipeEdge) -> Modifier = { progress, edge ->
-        Modifier.exitModifier(progress = progress, edge = edge)
-    },
-    enterModifier: (progress: Float, edge: BackEvent.SwipeEdge) -> Modifier = { progress, _ ->
-        Modifier.enterModifier(progress = progress)
-    },
+    exitModifier: (progress: Float, edge: BackEvent.SwipeEdge) -> Modifier,
+    enterModifier: (progress: Float, edge: BackEvent.SwipeEdge) -> Modifier,
 ): PredictiveBackAnimatable =
     DefaultPredictiveBackAnimatable(
         initialBackEvent = initialBackEvent,
@@ -74,20 +65,20 @@ fun predictiveBackAnimatable(
         getEnterModifier = enterModifier,
     )
 
-private fun Modifier.exitModifier(progress: Float, edge: BackEvent.SwipeEdge): Modifier =
-    scale(1F - progress * 0.25F)
-        .absoluteOffset(
-            x = when (edge) {
-                BackEvent.SwipeEdge.LEFT -> 32.dp * progress
-                BackEvent.SwipeEdge.RIGHT -> (-32).dp * progress
-                BackEvent.SwipeEdge.UNKNOWN -> 0.dp
-            },
-        )
-        .alpha(((1F - progress) * 2F).coerceAtMost(1F))
-        .clip(RoundedCornerShape(size = 64.dp * progress))
-
-private fun Modifier.enterModifier(progress: Float): Modifier =
-    drawWithContent {
-        drawContent()
-        drawRect(color = Color(red = 0F, green = 0F, blue = 0F, alpha = (1F - progress) / 4F))
-    }
+/**
+ * Creates an implementation of [PredictiveBackAnimatable] that resembles the
+ * [predictive back design for Android](https://developer.android.com/design/ui/mobile/guides/patterns/predictive-back).
+ *
+ * @param initialBackEvent an initial [BackEvent] of the predictive back gesture.
+ * @param shape a clipping shape of the child being removed (the currently active child),
+ * default is [RoundedCornerShape] that gradually increases following the gesture progress.
+ */
+@ExperimentalDecomposeApi
+fun materialPredictiveBackAnimatable(
+    initialBackEvent: BackEvent,
+    shape: (progress: Float, edge: BackEvent.SwipeEdge) -> Shape = { progress, _ -> RoundedCornerShape(size = 16.dp * progress) },
+): PredictiveBackAnimatable =
+    MaterialPredictiveBackAnimatable(
+        initialEvent = initialBackEvent,
+        shape = shape,
+    )
